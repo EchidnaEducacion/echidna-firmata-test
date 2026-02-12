@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Generar iconos PNG</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.3rem; }
+    p { color: #555; line-height: 1.6; }
+    .icon-row { display: flex; align-items: center; gap: 16px; margin: 16px 0; }
+    canvas { border: 1px solid #ccc; border-radius: 8px; }
+    a { display: inline-block; padding: 6px 16px; background: #1a237e; color: white; border-radius: 6px; text-decoration: none; font-size: 0.9rem; }
+    a:hover { background: #283593; }
+  </style>
+</head>
+<body>
+  <h1>Generador de iconos PNG para Echidna Board Test</h1>
+  <p>Haz clic derecho en cada icono y selecciona <strong>"Guardar imagen como..."</strong> con el nombre indicado. Coloca los ficheros en la misma carpeta que <code>index.html</code>.</p>
+  <div id="icons"></div>
+
+  <script>
+    const SVG_SRC = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+      <rect width="512" height="512" rx="76" fill="#1a237e"/>
+      <path d="M136 120h240v52H196v68h152v52H196v72h180v52H136V120z" fill="white"/>
+      <circle cx="404" cy="148" r="14" fill="#69f0ae"/>
+      <circle cx="404" cy="188" r="14" fill="#ff9800"/>
+      <circle cx="404" cy="228" r="14" fill="#ef5350"/>
+    </svg>`;
+
+    const SVG_MASKABLE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+      <rect width="512" height="512" fill="#1a237e"/>
+      <path d="M156 140h200v44H208v56h124v44H208v60h148v44H156V140z" fill="white"/>
+      <circle cx="380" cy="166" r="12" fill="#69f0ae"/>
+      <circle cx="380" cy="200" r="12" fill="#ff9800"/>
+      <circle cx="380" cy="234" r="12" fill="#ef5350"/>
+    </svg>`;
+
+    const sizes = [
+      { name: 'icon-192.png', size: 192, svg: SVG_SRC },
+      { name: 'icon-512.png', size: 512, svg: SVG_SRC },
+      { name: 'icon-maskable-512.png', size: 512, svg: SVG_MASKABLE },
+    ];
+
+    const container = document.getElementById('icons');
+
+    for (const { name, size, svg } of sizes) {
+      const row = document.createElement('div');
+      row.className = 'icon-row';
+
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      canvas.style.width = '96px';
+      canvas.style.height = '96px';
+      const ctx = canvas.getContext('2d');
+
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, size, size);
+        URL.revokeObjectURL(url);
+
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = name;
+        link.textContent = 'Descargar ' + name;
+        row.appendChild(link);
+      };
+      img.src = url;
+
+      const label = document.createElement('span');
+      label.innerHTML = `<strong>${name}</strong> (${size}x${size})`;
+
+      row.appendChild(canvas);
+      row.appendChild(label);
+      container.appendChild(row);
+    }
+  </script>
+</body>
+</html>

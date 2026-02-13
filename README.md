@@ -56,8 +56,8 @@ Haz clic en el boton del actuador para activarlo. Los actuadores PWM muestran un
 | LED Naranja   | D12 | Digital | Encender/Apagar |
 | LED Rojo      | D13 | Digital | Encender/Apagar |
 | RGB Rojo      | D9  | PWM     | Slider 0-255    |
-| RGB Verde     | D6  | PWM     | Slider 0-255    |
-| RGB Azul      | D5  | PWM     | Slider 0-255    |
+| RGB Verde     | D5  | PWM     | Slider 0-255    |
+| RGB Azul      | D6  | PWM     | Slider 0-255    |
 
 > El LED RGB incluye una previsualizacion del color resultante junto a los sliders.
 
@@ -82,8 +82,8 @@ Selecciona el modo en el desplegable antes de activar el pin.
     LED Naranja ── D12        A5 ── I2C SCL (Accel.)
        LED Rojo ── D13        A4 ── I2C SDA (Accel.)
        RGB Rojo ── D9         A3 ── LDR (Luz)
-      RGB Verde ── D6         A2 ── GPIO
-       RGB Azul ── D5         A1 ── Joystick Y
+       RGB Azul ── D6         A2 ── GPIO
+      RGB Verde ── D5         A1 ── Joystick Y
        GPIO D8  ── D8         A0 ── Joystick X
        GPIO D7  ── D7
        GPIO D4  ── D4

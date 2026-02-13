@@ -585,13 +585,13 @@
     ];
 
     const ACTUATORS = [
-      { id: 'buzzer',     name: 'Buzzer',      pin: 'D10', digitalPin: 10, type: 'pwm' },
-      { id: 'led-green',  name: 'LED Verde',   pin: 'D11', digitalPin: 11, type: 'pwm' },
+      { id: 'buzzer',     name: 'Buzzer',      pin: 'D10', digitalPin: 10, type: 'pwm', labels: ['Encender', 'Apagar'] },
+      { id: 'led-green',  name: 'LED Verde',   pin: 'D11', digitalPin: 11, type: 'pwm', labels: ['Encender', 'Apagar'] },
       { id: 'led-orange', name: 'LED Naranja', pin: 'D12', digitalPin: 12, type: 'digital' },
       { id: 'led-red',    name: 'LED Rojo',    pin: 'D13', digitalPin: 13, type: 'digital' },
-      { id: 'rgb-r', name: 'RGB Rojo',  pin: 'D9', digitalPin: 9,  type: 'pwm', rgb: true },
-      { id: 'rgb-g', name: 'RGB Verde', pin: 'D6', digitalPin: 6,  type: 'pwm', rgb: true },
-      { id: 'rgb-b', name: 'RGB Azul',  pin: 'D5', digitalPin: 5,  type: 'pwm', rgb: true },
+      { id: 'rgb-r', name: 'RGB Rojo',  pin: 'D9', digitalPin: 9,  type: 'pwm', rgb: true, labels: ['Encender', 'Apagar'] },
+      { id: 'rgb-g', name: 'RGB Verde', pin: 'D5', digitalPin: 5,  type: 'pwm', rgb: true, labels: ['Encender', 'Apagar'] },
+      { id: 'rgb-b', name: 'RGB Azul',  pin: 'D6', digitalPin: 6,  type: 'pwm', rgb: true, labels: ['Encender', 'Apagar'] },
     ];
 
     const GPIO_PINS = [
@@ -865,7 +865,7 @@
             card.innerHTML = `
               <div class="card-header">
                 <div><span class="card-name">${a.name}</span> <span class="card-pin">${a.pin}</span></div>
-                <button class="btn-activate btn-actuator" data-actuator="${a.id}">Activar</button>
+                <button class="btn-activate btn-actuator" data-actuator="${a.id}">${a.labels ? a.labels[0] : 'Activar'}</button>
               </div>
               <div class="actuator-controls" id="ctrl-${a.id}">
                 <div class="slider-row">
@@ -915,7 +915,7 @@
           document.getElementById(`sval-${a.id}`).textContent = '128';
           await this.firmata.analogWrite(a.digitalPin, 128);
           this.activeActuators.set(a.id, { pwmValue: 128 });
-          btn.textContent = 'Desactivar';
+          btn.textContent = a.labels ? a.labels[1] : 'Desactivar';
           document.getElementById(`ctrl-${a.id}`).classList.add('visible');
           if (a.rgb) this._updateRgbPreview(a.id, 128);
         } else {
@@ -937,7 +937,7 @@
           slider.disabled = true;
           slider.value = 0;
           document.getElementById(`sval-${a.id}`).textContent = '0';
-          btn.textContent = 'Activar';
+          btn.textContent = a.labels ? a.labels[0] : 'Activar';
           document.getElementById(`ctrl-${a.id}`).classList.remove('visible');
           if (a.rgb) this._updateRgbPreview(a.id, 0);
         } else {

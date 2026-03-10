@@ -48,6 +48,31 @@ Haz clic en **Leer** junto al sensor que quieras probar. Aparecera el valor en t
 
 > El acelerometro usa el sensor **LIS3DH** por I2C en la direccion `0x18`. Al pulsar **Leer** se muestran los ejes **X/Y/Z** en tiempo real y una orientacion aproximada: izquierda, derecha, arriba, abajo, boca arriba y boca abajo.
 
+#### Checklist manual del acelerometro
+
+1. Conecta la placa y pulsa **Leer** en **Acelerometro**.
+2. Verifica que aparecen valores numericos en **X**, **Y** y **Z**.
+3. Inclina la placa a la izquierda y confirma `Inclinacion: izquierda`.
+4. Inclina la placa a la derecha y confirma `Inclinacion: derecha`.
+5. Inclina la placa hacia arriba y confirma `Inclinacion: arriba`.
+6. Inclina la placa hacia abajo y confirma `Inclinacion: abajo`.
+7. Coloca la placa con los componentes hacia arriba y confirma `Orientacion: boca arriba`.
+8. Coloca la placa con los componentes hacia abajo y confirma `Orientacion: boca abajo`.
+9. Pulsa **Parar** y verifica que la lectura deja de actualizarse.
+
+#### Hoja rapida QA / fabricacion
+
+| Prueba | Esperado | Resultado | Observaciones |
+|--------|----------|-----------|---------------|
+| Inicializacion I2C | Sin error, lectura activa | OK / FAIL | |
+| Eje X izquierda | `Inclinacion: izquierda` | OK / FAIL | |
+| Eje X derecha | `Inclinacion: derecha` | OK / FAIL | |
+| Eje Y arriba | `Inclinacion: arriba` | OK / FAIL | |
+| Eje Y abajo | `Inclinacion: abajo` | OK / FAIL | |
+| Eje Z boca arriba | `Orientacion: boca arriba` | OK / FAIL | |
+| Eje Z boca abajo | `Orientacion: boca abajo` | OK / FAIL | |
+| Parada de lectura | El boton `Parar` detiene la actualizacion | OK / FAIL | |
+
 ### Probar actuadores
 
 Haz clic en el boton del actuador para activarlo. Los actuadores PWM muestran un slider para ajustar la intensidad (0-255). Los digitales se encienden/apagan con el boton.
@@ -176,7 +201,7 @@ Si prefieres desplegar manualmente en lugar de usar GitHub Actions, tambien pued
 - **Comunicacion**: protocolo Firmata binario sobre Web Serial API a **57600 baudios**.
 - **Sin dependencias externas**: fichero HTML unico y autocontenido, sin librerias ni instalacion.
 - **PWA**: service worker con estrategia cache-first, manifest con iconos SVG y PNG.
-- **Protocolo implementado**: SET_PIN_MODE, DIGITAL_MESSAGE, ANALOG_MESSAGE, REPORT_ANALOG, REPORT_DIGITAL, SYSTEM_RESET.
+- **Protocolo implementado**: SET_PIN_MODE, DIGITAL_MESSAGE, ANALOG_MESSAGE, REPORT_ANALOG, REPORT_DIGITAL, SYSTEM_RESET, Sysex I2C (`I2C_CONFIG`, `I2C_REQUEST`, `I2C_REPLY`).
 - **Compatibilidad**: cualquier placa Arduino compatible con StandardFirmata (Nano, Uno, Mega...) con el pinout Echidna.
 
 ## Solucion de problemas

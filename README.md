@@ -94,7 +94,7 @@ Haz clic en el boton del actuador para activarlo. Los actuadores PWM muestran un
 Los pines de proposito general (A2, D4, D7, D8) se pueden configurar como:
 
 - **Entrada Analogica** (solo A2): lee valores 0-1023.
-- **Entrada Digital**: lee estado HIGH/LOW con pull-up interno.
+- **Entrada Digital**: A2 usa pull-up interno; D4, D7 y D8 se leen como entrada digital normal.
 - **Salida Digital**: alterna entre HIGH y LOW con un boton.
 
 Selecciona el modo en el desplegable antes de activar el pin.

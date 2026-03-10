@@ -1241,6 +1241,9 @@
         const mode = document.getElementById(`mode-${g.id}`).value;
         const btn = document.querySelector(`[data-gpio="${g.id}"]`);
         const ctrl = document.getElementById(`ctrl-${g.id}`);
+        const gpioInputMode = ['gpio-d4', 'gpio-d7', 'gpio-d8'].includes(g.id)
+          ? FirmataClient.INPUT
+          : FirmataClient.INPUT_PULLUP;
         btn.classList.add('active');
         btn.textContent = 'Desactivar';
         document.getElementById(`card-${g.id}`).classList.add('active');
@@ -1261,7 +1264,7 @@
               <div class="digital-dot" id="dot-${g.id}"></div>
               <span class="digital-text" id="dtxt-${g.id}">--</span>
             </div>`;
-          await this.firmata.setPinMode(g.digitalPin, FirmataClient.INPUT_PULLUP);
+          await this.firmata.setPinMode(g.digitalPin, gpioInputMode);
           const port = g.digitalPin >> 3;
           this.digitalReportCount[port]++;
           if (this.digitalReportCount[port] === 1) {

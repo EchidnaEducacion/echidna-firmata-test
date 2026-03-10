@@ -232,6 +232,31 @@
       font-family: monospace;
     }
 
+    .accel-grid {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .accel-row {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .accel-axis-label {
+      font-family: monospace;
+      font-weight: 700;
+      color: #1565c0;
+    }
+
+    .accel-axis-value {
+      font-family: monospace;
+      font-size: 0.88rem;
+      color: #333;
+    }
+
     .digital-indicator {
       display: flex;
       align-items: center;
@@ -434,12 +459,17 @@
       static START_SYSEX     = 0xF0;
       static END_SYSEX       = 0xF7;
       static PROTOCOL_VERSION = 0xF9;
+      static I2C_REQUEST     = 0x76;
+      static I2C_REPLY       = 0x77;
+      static I2C_CONFIG      = 0x78;
 
       static INPUT        = 0x00;
       static OUTPUT       = 0x01;
       static ANALOG       = 0x02;
       static PWM          = 0x03;
       static INPUT_PULLUP = 0x0B;
+      static I2C_WRITE    = 0x00;
+      static I2C_READ     = 0x08;
 
       constructor() {
         this.port = null;
@@ -453,12 +483,15 @@
 
         this.onAnalogMessage = null;
         this.onDigitalMessage = null;
+        this.onI2CReply = null;
 
         this._currentCommand = 0;
         this._currentChannel = 0;
         this._dataBuffer = [];
         this._expectedBytes = 0;
         this._inSysex = false;
+        this._sysexBuffer = [];
+        this._pendingI2CReads = new Map();
       }
 
       async connect() {
@@ -481,6 +514,13 @@
           if (this.port) { await this.port.close(); this.port = null; }
         } catch (e) { console.warn('Disconnect:', e.message); }
         this.digitalOutputState = [0, 0];
+        for (const pending of this._pendingI2CReads.values()) {
+          clearTimeout(pending.timeoutId);
+          pending.reject(new Error('Puerto serie desconectado'));
+        }
+        this._pendingI2CReads.clear();
+        this._sysexBuffer = [];
+        this._inSysex = false;
       }
 
       async _startReading() {
@@ -501,11 +541,21 @@
 
       _parseByte(byte) {
         if (this._inSysex) {
-          if (byte === FirmataClient.END_SYSEX) this._inSysex = false;
+          if (byte === FirmataClient.END_SYSEX) {
+            this._inSysex = false;
+            this._processSysexMessage(this._sysexBuffer);
+            this._sysexBuffer = [];
+          } else {
+            this._sysexBuffer.push(byte);
+          }
           return;
         }
         if (byte >= 0x80) {
-          if (byte === FirmataClient.START_SYSEX) { this._inSysex = true; return; }
+          if (byte === FirmataClient.START_SYSEX) {
+            this._inSysex = true;
+            this._sysexBuffer = [];
+            return;
+          }
           const cmd = byte & 0xF0;
           const ch  = byte & 0x0F;
           if (cmd === FirmataClient.ANALOG_MESSAGE || cmd === FirmataClient.DIGITAL_MESSAGE) {
@@ -522,6 +572,30 @@
           this._dataBuffer.push(byte);
           this._expectedBytes--;
           if (this._expectedBytes === 0) this._processMessage();
+        }
+      }
+
+      _processSysexMessage(data) {
+        if (!data.length) return;
+        const command = data[0];
+        const payload = data.slice(1);
+        if (command === FirmataClient.I2C_REPLY) {
+          const address = payload[0] | (payload[1] << 7);
+          const register = payload[2] | (payload[3] << 7);
+          const bytes = [];
+          for (let i = 4; i < payload.length; i += 2) {
+            const lsb = payload[i] ?? 0;
+            const msb = payload[i + 1] ?? 0;
+            bytes.push(lsb | (msb << 7));
+          }
+          const key = `${address}:${register}`;
+          const pending = this._pendingI2CReads.get(key);
+          if (pending) {
+            clearTimeout(pending.timeoutId);
+            this._pendingI2CReads.delete(key);
+            pending.resolve(bytes);
+          }
+          if (this.onI2CReply) this.onI2CReply(address, register, bytes);
         }
       }
 
@@ -567,6 +641,51 @@
         await this._send([FirmataClient.REPORT_DIGITAL | port, enable ? 1 : 0]);
       }
 
+      async i2cConfig(delayUs = 0) {
+        await this._send([
+          FirmataClient.START_SYSEX,
+          FirmataClient.I2C_CONFIG,
+          delayUs & 0x7F,
+          (delayUs >> 7) & 0x7F,
+          FirmataClient.END_SYSEX
+        ]);
+      }
+
+      async i2cWrite(address, register, bytes) {
+        const payload = [FirmataClient.START_SYSEX, FirmataClient.I2C_REQUEST, address, FirmataClient.I2C_WRITE];
+        payload.push(register & 0x7F, (register >> 7) & 0x7F);
+        for (const byte of bytes) {
+          payload.push(byte & 0x7F, (byte >> 7) & 0x7F);
+        }
+        payload.push(FirmataClient.END_SYSEX);
+        await this._send(payload);
+      }
+
+      async i2cReadOnce(address, register, numBytes, timeoutMs = 800) {
+        const key = `${address}:${register}`;
+        const result = new Promise((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            this._pendingI2CReads.delete(key);
+            reject(new Error(`Timeout leyendo I2C 0x${address.toString(16)}`));
+          }, timeoutMs);
+          this._pendingI2CReads.set(key, { resolve, reject, timeoutId });
+        });
+
+        await this._send([
+          FirmataClient.START_SYSEX,
+          FirmataClient.I2C_REQUEST,
+          address,
+          FirmataClient.I2C_READ,
+          register & 0x7F,
+          (register >> 7) & 0x7F,
+          numBytes & 0x7F,
+          (numBytes >> 7) & 0x7F,
+          FirmataClient.END_SYSEX
+        ]);
+
+        return result;
+      }
+
       getDigitalPin(pin) {
         return (this.digitalInputState[pin >> 3] >> (pin & 7)) & 1;
       }
@@ -576,6 +695,7 @@
     const SENSORS = [
       { id: 'joy-x',  name: 'Joystick X',       pin: 'A0', channel: 0, type: 'analog' },
       { id: 'joy-y',  name: 'Joystick Y',       pin: 'A1', channel: 1, type: 'analog' },
+      { id: 'accel',  name: 'Acelerometro',     pin: 'A4/A5', type: 'accelerometer' },
       { id: 'ldr',    name: 'LDR (Luz)',         pin: 'A3', channel: 3, type: 'analog' },
       { id: 'temp',   name: 'Temperatura',       pin: 'A6', channel: 6, type: 'analog',
         convert: v => ((v * 0.4658) - 50.0).toFixed(1) + ' \u00B0C' },
@@ -601,6 +721,13 @@
       { id: 'gpio-d8', name: 'D8', digitalPin: 8,  hasAnalog: false },
     ];
 
+    const LIS3DH_ADDRESS = 0x18;
+    const LIS3DH_WHO_AM_I = 0x0F;
+    const LIS3DH_CTRL_REG1 = 0x20;
+    const LIS3DH_CTRL_REG4 = 0x23;
+    const LIS3DH_OUT_X_L = 0x28;
+    const ACCEL_THRESHOLD = 7.8;
+
     // ── Application ─────────────────────────────────────────────────
     class EchidnaApp {
       constructor() {
@@ -611,6 +738,9 @@
         this.activeGpio = new Map();       // id -> { mode, outputState }
         this.digitalReportCount = [0, 0];  // ref count per port
         this.rgbValues = { r: 0, g: 0, b: 0 };
+        this.accelInterval = null;
+        this.accelInitialized = false;
+        this.accelBusy = false;
 
         this.firmata.onAnalogMessage = (ch, val) => this._onAnalog(ch, val);
         this.firmata.onDigitalMessage = (port, val) => this._onDigital(port, val);
@@ -641,6 +771,7 @@
           try {
             await this.firmata.connect();
             this.connected = true;
+            this.accelInitialized = false;
             btn.textContent = 'Desconectar';
             btn.classList.add('connected');
             status.textContent = 'Conectado';
@@ -655,6 +786,7 @@
           await this._deactivateAll();
           await this.firmata.disconnect();
           this.connected = false;
+          this.accelInitialized = false;
           btn.textContent = 'Conectar';
           btn.classList.remove('connected');
           status.textContent = 'Desconectado';
@@ -720,6 +852,20 @@
                 </div>
                 <div class="sensor-extra" id="extra-${s.id}"></div>
               </div>`;
+          } else if (s.type === 'accelerometer') {
+            card.innerHTML = `
+              <div class="card-header">
+                <div><span class="card-name">${s.name}</span> <span class="card-pin">${s.pin}</span></div>
+                <button class="btn-activate btn-sensor" data-sensor="${s.id}">Leer</button>
+              </div>
+              <div class="sensor-value-area" id="val-${s.id}">
+                <div class="accel-grid">
+                  <div class="accel-row"><span class="accel-axis-label">X</span><span class="accel-axis-value" id="accel-x">--</span></div>
+                  <div class="accel-row"><span class="accel-axis-label">Y</span><span class="accel-axis-value" id="accel-y">--</span></div>
+                  <div class="accel-row"><span class="accel-axis-label">Z</span><span class="accel-axis-value" id="accel-z">--</span></div>
+                </div>
+                <div class="sensor-extra" id="extra-${s.id}">Inclina la placa para validar izquierda, derecha, arriba, abajo y boca arriba/boca abajo.</div>
+              </div>`;
           } else {
             card.innerHTML = `
               <div class="card-header">
@@ -755,15 +901,26 @@
         document.getElementById(`card-${s.id}`).classList.add('active');
         document.getElementById(`val-${s.id}`).classList.add('visible');
 
-        if (s.type === 'analog') {
-          await this.firmata.reportAnalog(s.channel, true);
-        } else {
-          await this.firmata.setPinMode(s.digitalPin, FirmataClient.INPUT_PULLUP);
-          const port = s.digitalPin >> 3;
-          this.digitalReportCount[port]++;
-          if (this.digitalReportCount[port] === 1) {
-            await this.firmata.reportDigital(port, true);
+        try {
+          if (s.type === 'analog') {
+            await this.firmata.reportAnalog(s.channel, true);
+          } else if (s.type === 'accelerometer') {
+            await this._activateAccelerometer();
+          } else {
+            await this.firmata.setPinMode(s.digitalPin, FirmataClient.INPUT_PULLUP);
+            const port = s.digitalPin >> 3;
+            this.digitalReportCount[port]++;
+            if (this.digitalReportCount[port] === 1) {
+              await this.firmata.reportDigital(port, true);
+            }
           }
+        } catch (error) {
+          this.activeSensors.delete(s.id);
+          btn.classList.remove('active');
+          btn.textContent = 'Leer';
+          document.getElementById(`card-${s.id}`).classList.remove('active');
+          document.getElementById(`val-${s.id}`).classList.remove('visible');
+          throw error;
         }
       }
 
@@ -777,6 +934,8 @@
 
         if (s.type === 'analog') {
           await this.firmata.reportAnalog(s.channel, false);
+        } else if (s.type === 'accelerometer') {
+          this._deactivateAccelerometer();
         } else {
           const port = s.digitalPin >> 3;
           this.digitalReportCount[port]--;
@@ -812,6 +971,77 @@
             }
           }
         }
+      }
+
+      async _activateAccelerometer() {
+        const extra = document.getElementById('extra-accel');
+        extra.textContent = 'Inicializando LIS3DH...';
+        if (!this.accelInitialized) {
+          await this.firmata.i2cConfig();
+          const whoAmI = await this.firmata.i2cReadOnce(LIS3DH_ADDRESS, LIS3DH_WHO_AM_I, 1);
+          if (!whoAmI.length || whoAmI[0] !== 0x33) {
+            throw new Error(`WHO_AM_I inesperado: ${whoAmI[0] ?? 'sin respuesta'}`);
+          }
+          await this.firmata.i2cWrite(LIS3DH_ADDRESS, LIS3DH_CTRL_REG1, [0x57]);
+          await this.firmata.i2cWrite(LIS3DH_ADDRESS, LIS3DH_CTRL_REG4, [0x88]);
+          this.accelInitialized = true;
+        }
+        extra.textContent = 'Lectura I2C en tiempo real';
+        await this._pollAccelerometer();
+        this.accelInterval = window.setInterval(() => this._pollAccelerometer(), 250);
+      }
+
+      _deactivateAccelerometer() {
+        if (this.accelInterval) {
+          clearInterval(this.accelInterval);
+          this.accelInterval = null;
+        }
+        this.accelBusy = false;
+      }
+
+      async _pollAccelerometer() {
+        if (!this.activeSensors.has('accel') || this.accelBusy) return;
+        this.accelBusy = true;
+        try {
+          const bytes = await this.firmata.i2cReadOnce(LIS3DH_ADDRESS, LIS3DH_OUT_X_L | 0x80, 6);
+          if (bytes.length < 6) {
+            throw new Error('Lectura incompleta del acelerometro');
+          }
+          const accel = this._decodeAccelerometer(bytes);
+          document.getElementById('accel-x').textContent = `${accel.x.toFixed(2)} m/s²`;
+          document.getElementById('accel-y').textContent = `${accel.y.toFixed(2)} m/s²`;
+          document.getElementById('accel-z').textContent = `${accel.z.toFixed(2)} m/s²`;
+          document.getElementById('extra-accel').textContent = this._describeAcceleration(accel);
+        } catch (error) {
+          document.getElementById('extra-accel').textContent = `Error: ${error.message}`;
+        } finally {
+          this.accelBusy = false;
+        }
+      }
+
+      _decodeAccelerometer(bytes) {
+        const readAxis = (offset) => {
+          let raw = bytes[offset] | (bytes[offset + 1] << 8);
+          if (raw & 0x8000) raw -= 0x10000;
+          raw >>= 4;
+          return raw * 0.001 * 9.80665;
+        };
+        return {
+          x: readAxis(0),
+          y: readAxis(2),
+          z: readAxis(4),
+        };
+      }
+
+      _describeAcceleration(accel) {
+        const { x, y, z } = accel;
+        if (z >= ACCEL_THRESHOLD) return 'Orientacion: boca arriba';
+        if (z <= -ACCEL_THRESHOLD) return 'Orientacion: boca abajo';
+        if (x >= ACCEL_THRESHOLD) return 'Inclinacion: derecha';
+        if (x <= -ACCEL_THRESHOLD) return 'Inclinacion: izquierda';
+        if (y >= ACCEL_THRESHOLD) return 'Inclinacion: arriba';
+        if (y <= -ACCEL_THRESHOLD) return 'Inclinacion: abajo';
+        return 'Mueve o inclina la placa para comprobar los tres ejes';
       }
 
       _onDigital(port, value) {

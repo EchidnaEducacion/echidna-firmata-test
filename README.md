@@ -29,12 +29,13 @@ La aplicacion se sirve en la ruta `/echidna-firmata-test/`. Accede desde Chrome/
 
 ### Probar sensores
 
-Haz clic en **Leer** junto al sensor que quieras probar. Aparecera el valor en tiempo real con una barra de progreso. Haz clic en **Parar** para dejar de leer.
+Haz clic en **Leer** junto al sensor que quieras probar. Aparecera el valor en tiempo real; los sensores analogicos usan una barra de progreso y el acelerometro muestra los ejes X/Y/Z. Haz clic en **Parar** para dejar de leer.
 
 | Sensor               | Pin | Tipo     | Rango      |
 |----------------------|-----|----------|------------|
 | Joystick X           | A0  | Analogico | 0 - 1023  |
 | Joystick Y           | A1  | Analogico | 0 - 1023  |
+| Acelerometro (LIS3DH)| A4/A5 | I2C | X/Y/Z en m/s² |
 | LDR (Luz)            | A3  | Analogico | 0 - 1023  |
 | Temperatura          | A6  | Analogico | 0 - 1023 (muestra conversion a Celsius) |
 | Microfono            | A7  | Analogico | 0 - 1023  |
@@ -44,6 +45,8 @@ Haz clic en **Leer** junto al sensor que quieras probar. Aparecera el valor en t
 > Los botones usan `INPUT_PULLUP`: el valor es **0** cuando se pulsa y **1** cuando no.
 
 > La temperatura se convierte a Celsius con la formula: `(ADC * 0.4658) - 50.0`
+
+> El acelerometro usa el sensor **LIS3DH** por I2C en la direccion `0x18`. Al pulsar **Leer** se muestran los ejes **X/Y/Z** en tiempo real y una orientacion aproximada: izquierda, derecha, arriba, abajo, boca arriba y boca abajo.
 
 ### Probar actuadores
 
@@ -183,6 +186,7 @@ Si prefieres desplegar manualmente en lugar de usar GitHub Actions, tambien pued
 | No aparece el boton Conectar | Asegurate de usar Chrome/Chromium en escritorio. La Web Serial API no funciona en movil. |
 | No aparece el puerto serie | Verifica que el cable USB es de datos (no solo de carga) y que los drivers estan instalados. |
 | Se conecta pero no responde | Confirma que StandardFirmata esta cargado en la placa. Prueba a desconectar y reconectar. |
+| El acelerometro muestra error o no cambia | Verifica que el LIS3DH responde por I2C en `0x18` y que las lineas `A4/SDA` y `A5/SCL` funcionan correctamente. |
 | Lecturas erraticas en sensores | Es normal cierto ruido en las entradas analogicas. Verifica las conexiones fisicas. |
 | El buzzer no suena | El sonido se genera por PWM a ~490 Hz. Ajusta el slider a un valor alto (>100) para comprobar. |
 

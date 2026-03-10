@@ -1,4 +1,4 @@
-const CACHE_NAME = 'echidna-test-v1';
+const CACHE_NAME = 'echidna-test-v2';
 const BASE_PATH = self.location.pathname.replace(/sw\.js$/, '');
 
 const ASSETS = [

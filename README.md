@@ -2,6 +2,10 @@
 
 Herramienta web para testear la placa de robotica educativa **Echidna** desde el navegador, comunicandose mediante el protocolo **Firmata** a traves de la **Web Serial API**.
 
+## Aplicacion desplegada
+
+**URL:** `https://echidnaeducacion.github.io/echidna-firmata-test/`
+
 ## Requisitos
 
 - **Navegador**: Google Chrome o Chromium (escritorio). La Web Serial API no esta disponible en Firefox ni Safari.
@@ -17,7 +21,7 @@ Herramienta web para testear la placa de robotica educativa **Echidna** desde el
 
 ## Uso
 
-La aplicacion se sirve en la ruta `/echidna-firmata-test/`. Accede desde Chrome/Chromium a la URL del servidor (por ejemplo `https://tu-servidor.com/echidna-firmata-test/`).
+La aplicacion se sirve en la ruta `/echidna-firmata-test/`. Accede desde Chrome/Chromium a `https://echidnaeducacion.github.io/echidna-firmata-test/`.
 
 1. Abre la URL de la aplicacion en Chrome/Chromium.
 2. Conecta la placa Echidna por USB.

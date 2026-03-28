@@ -2,9 +2,15 @@
 
 Herramienta web para testear la placa de robotica educativa **Echidna** desde el navegador, comunicandose mediante el protocolo **Firmata** a traves de la **Web Serial API**.
 
-## Aplicacion desplegada
+## Usar la aplicacion
 
-**URL:** `https://echidnaeducacion.github.io/echidna-firmata-test/`
+<p>
+  <a href="https://echidnaeducacion.github.io/echidna-firmata-test/">
+    <img alt="Abrir aplicacion" src="https://img.shields.io/badge/Abrir_aplicacion-2ea44f?style=for-the-badge">
+  </a>
+</p>
+
+<https://echidnaeducacion.github.io/echidna-firmata-test/>
 
 ## Requisitos
 

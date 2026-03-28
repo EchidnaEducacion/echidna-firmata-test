@@ -10,8 +10,6 @@ Herramienta web para testear la placa de robotica educativa **Echidna** desde el
   </a>
 </p>
 
-<https://echidnaeducacion.github.io/echidna-firmata-test/>
-
 ## Requisitos
 
 - **Navegador**: Google Chrome o Chromium (escritorio). La Web Serial API no esta disponible en Firefox ni Safari.

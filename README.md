@@ -10,6 +10,8 @@ Herramienta web para testear la placa de robotica educativa **Echidna** desde el
   </a>
 </p>
 
+Abrela con **Google Chrome** o **Chromium** en escritorio.
+
 ## Requisitos
 
 - **Navegador**: Google Chrome o Chromium (escritorio). La Web Serial API no esta disponible en Firefox ni Safari.
